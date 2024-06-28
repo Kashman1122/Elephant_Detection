@@ -1,0 +1,7 @@
+opencv-python-headless
+python-dotenv
+numpy
+pytz
+super-gradients
+google-generative-ai
+Pillow
