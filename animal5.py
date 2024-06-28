@@ -12,11 +12,7 @@ import sys
 load_dotenv()
 
 # Configure GenAI API using Google API key from environment variables
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Initialize the GenerativeModel with "gemini-pro-vision"
-model = genai.GenerativeModel("gemini-pro-vision")
-from ultralytics import YOLO
 
 # Load your custom YOLO-NAS-M model
 yolo_nas_m = models.get('yolo_nas_m', num_classes=2, checkpoint_path="ckpt_best.pth")
@@ -50,12 +46,6 @@ def draw_bounding_boxes(frame, pred_data):
             cv2.putText(frame, f'Elephant {confidence:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     return num_elephants
-
-def get_gemini_response(image):
-    # Prompt specifically asking the Gemini model to detect elephants
-    prompt = "Please detect elephants in this image."
-    response = model.generate_content((prompt,image))
-    return response.text
 
 # Function to perform real-time detection from webcam using multiple YOLO models and Gemini model
 def detect_with_multiple_models():
@@ -100,23 +90,7 @@ def detect_with_multiple_models():
             pred_data = predictions_nas_m_premium.prediction
             num_elephants += draw_bounding_boxes(filtered_frame, pred_data)
 
-        # Save the filtered frame as a temporary image file
-        cv2.imwrite(temp_image_path, filtered_frame)
 
-        # Open the temporary image file using PIL
-        image = Image.open(temp_image_path)
-
-        # Process frame with Gemini model at specified intervals
-        if frame_count % frame_interval == 0:
-            # Get response from Gemini model
-            response = get_gemini_response(image)
-            print(response)
-            sys.stdout.flush()
-
-            # Display the response on the frame
-            cv2.putText(filtered_frame, response, (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-        frame_count += 1
 
         # Display the number of elephants detected
         cv2.putText(filtered_frame, f'Elephants Detected: {num_elephants}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
