@@ -4,7 +4,6 @@ import numpy as np
 from datetime import datetime
 import pytz
 from super_gradients.training import models
-import google.generativeai as genai
 from PIL import Image
 import tempfile
 import os
