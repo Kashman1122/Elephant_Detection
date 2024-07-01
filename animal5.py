@@ -8,22 +8,22 @@ from PIL import Image
 import tempfile
 import os
 import sys
+import time
 load_dotenv()
-
-# Configure GenAI API using Google API key from environment variables
-
 
 # Load your custom YOLO-NAS-M model
 yolo_nas_m = models.get('yolo_nas_m', num_classes=2, checkpoint_path="ckpt_best.pth")
+# yolo_nas_m2 = models.get("yolo_nas_m", pretrained_weights='coco')
 
 # Load YOLO-V4 model
-yolo_v4 = models.get('yolo_nas_m', num_classes=2, checkpoint_path="ckpt_best3.pth")
+# yolo_v4 = models.get('yolo_nas_m', num_classes=2, checkpoint_path="ckpt_best3.pth")
 
 # Load YOLO-NAS-M Premium model
-yolo_nas_m_premium = models.get('yolo_nas_m', num_classes=2, checkpoint_path="ckpt_best8.pth")
+# yolo_nas_m_premium = models.get('yolo_nas_m', num_classes=2, checkpoint_path="ckpt_best8.pth")
 
 # Define the class index for elephant (class index 0 in custom model)
 elephant_class_index = 0
+elephant_class_index2 = 20
 
 # Define the confidence threshold
 confidence_threshold = 0.75
@@ -44,16 +44,21 @@ def draw_bounding_boxes(frame, pred_data):
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(frame, f'Elephant {confidence:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
+        # if label == elephant_class_index2 and confidence > confidence_threshold:
+        #     bbox = pred_data.bboxes_xyxy[i]  # Assuming the bounding boxes are stored in bboxes_xyxy
+        #     x1, y1, x2, y2 = map(int, bbox)
+
+            # num_elephants += 1
+            #
+            # # Draw bounding box and label for the elephant
+            # cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # cv2.putText(frame, f'Elephant {confidence:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     return num_elephants
 
-# Function to perform real-time detection from webcam using multiple YOLO models and Gemini model
+# Function to perform real-time detection from webcam using multiple YOLO models
 def detect_with_multiple_models():
     # Open webcam or video file
     cap = cv2.VideoCapture(0)
-
-    frame_interval =5
-    frame_count = 0
-    temp_image_path = os.path.join(tempfile.gettempdir(), "temp_frame.jpg")
 
     while True:
         # Read frame from webcam
@@ -66,10 +71,12 @@ def detect_with_multiple_models():
 
         # Perform prediction on the filtered frame using YOLO-NAS-M model
         predictions_nas_m = yolo_nas_m.predict(filtered_frame)
+        # predictions_nas_m2 = yolo_nas_m2.predict(filtered_frame)
+
         # Perform prediction on the filtered frame using YOLO-V4 model
-        predictions_v4 = yolo_v4.predict(filtered_frame)
+        # predictions_v4 = yolo_v4.predict(filtered_frame)
         # Perform prediction on the filtered frame using YOLO-NAS-M Premium model
-        predictions_nas_m_premium = yolo_nas_m_premium.predict(filtered_frame)
+        # predictions_nas_m_premium = yolo_nas_m_premium.predict(filtered_frame)
 
         # Initialize the number of elephants detected
         num_elephants = 0
@@ -80,16 +87,14 @@ def detect_with_multiple_models():
             num_elephants += draw_bounding_boxes(filtered_frame, pred_data)
 
         # Check predictions from YOLO-V4 model
-        if hasattr(predictions_v4, 'prediction'):
-            pred_data = predictions_v4.prediction
-            num_elephants += draw_bounding_boxes(filtered_frame, pred_data)
-
-        # Check predictions from YOLO-NAS-M Premium model
-        if hasattr(predictions_nas_m_premium, 'prediction'):
-            pred_data = predictions_nas_m_premium.prediction
-            num_elephants += draw_bounding_boxes(filtered_frame, pred_data)
-
-
+        # if hasattr(predictions_nas_m2, 'prediction'):
+        #     pred_data = predictions_nas_m2.prediction
+        #     num_elephants += draw_bounding_boxes(filtered_frame, pred_data)
+        #
+        # # Check predictions from YOLO-NAS-M Premium model
+        # if hasattr(predictions_nas_m_premium, 'prediction'):
+        #     pred_data = predictions_nas_m_premium.prediction
+        #     num_elephants += draw_bounding_boxes(filtered_frame, pred_data)
 
         # Display the number of elephants detected
         cv2.putText(filtered_frame, f'Elephants Detected: {num_elephants}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -102,6 +107,13 @@ def detect_with_multiple_models():
         cv2.imshow('frame', filtered_frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        # Switch to the morning model if it's morning
+        if day_or_night == "Day":
+            cap.release()
+            cv2.destroyAllWindows()
+            detect_yolo_nas_m()
             break
 
     # Release the camera resource when done
@@ -148,7 +160,6 @@ yolo_nas_m2 = models.get("yolo_nas_m", pretrained_weights='coco')
 
 
 # Define the class index for elephant (class index 20 in COCO dataset)
-elephant_class_index2 = 20
 
 # Define the confidence threshold
 confidence_threshold2 = 0.55
@@ -197,23 +208,37 @@ def detect_yolo_nas_m():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+        # Switch to the night model if it's night
+        day_or_night = is_day_or_night(frame)
+        if day_or_night == "Night":
+            cap.release()
+            cv2.destroyAllWindows()
+            detect_with_multiple_models()
+            break
+
     # Release the camera resource when done
     cap.release()
     cv2.destroyAllWindows()
 
 
-# Main function to handle user input
+# Main function to handle model switching based on time of day
 def main():
     while True:
-        user_input = input("Enter 'm' to run model for morning, 'n' to run model for night, or 'q' to quit: ")
-        if user_input == 'n':
-            detect_with_multiple_models()
-        elif user_input == 'm':
-            detect_yolo_nas_m()
-        elif user_input == 'q':
+        # Open webcam
+        cap = cv2.VideoCapture(0)
+        ret, frame = cap.read()
+        cap.release()
+
+        if not ret:
+            print("Failed to capture frame from webcam.")
             break
+
+        day_or_night = is_day_or_night(frame)
+
+        if day_or_night == "Day":
+            detect_yolo_nas_m()
         else:
-            print("Invalid input. Please enter 'm', 'n', or 'q'.")
+            detect_with_multiple_models()
 
 if __name__ == "__main__":
     main()
