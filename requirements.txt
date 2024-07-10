@@ -1,3 +1,4 @@
+<-----For Super-Gradients----->
 opencv-python-headless
 python-dotenv
 numpy
@@ -5,3 +6,10 @@ pytz
 super-gradients
 google-generative-ai
 Pillow
+
+
+<-----For YOLOV8----->
+ultralytics
+cvzone
+cv2
+math
